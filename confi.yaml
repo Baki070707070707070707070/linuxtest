@@ -1,0 +1,81 @@
+#cloud-config
+autoinstall:
+  version: 1
+  user-data:
+    users:
+      - name: LeeG  # Nome utente
+        passwd: $6$rounds=4096$salt$hashed_password  # Password crittografata (usa mkpasswd -m sha-512 "Luu2134")
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /bin/bash
+        lock-passwd: false
+    disable_root: false  # Mantieni l'accesso root abilitato
+  ssh:
+    install-server: no
+  storage:
+    layout:
+      name: lvm
+      encrypt: true  # Abilita la crittografia del disco
+      password: $6$rounds=4096$salt$hashed_password  # Usa la stessa password crittografata
+  keyboard:
+    layout: it,de  # Layout di tastiera italiano e tedesco
+    toggle: null
+  locale: it_IT.UTF-8  # Lingua italiana e fuso orario
+  timezone: Europe/Rome
+  packages:
+    - curl
+    - wget
+    - git
+    - htop
+    - vim
+    - net-tools
+    - m365  # Microsoft 365 CLI
+    - libnss3-tools  # Dipendenze per Intune Portal
+  snaps:
+    - name: code
+    - name: postman
+    - name: powershell
+    - name: pycharm-community
+  late-commands:
+    # Salva la chiave di recupero della crittografia
+    - curtin in-target --target=/target -- mkdir -p /etc/keys
+    - curtin in-target --target=/target -- sh -c 'echo "Chiave di recupero crittografia: $(sudo cryptsetup luksDump /dev/vda3 | grep -i "key slot")" > /etc/keys/recovery_key.txt'
+    - curtin in-target --target=/target -- chmod 600 /etc/keys/recovery_key.txt
+
+    # Aggiorna i pacchetti
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get upgrade -y
+
+    # Installa Microsoft Edge
+    - curtin in-target --target=/target -- add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main"
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get install -y microsoft-edge-stable
+
+    # Installa Firefox
+    - curtin in-target --target=/target -- apt-get install -y firefox
+
+    # Installa Google Chrome
+    - curtin in-target --target=/target -- wget -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+    - curtin in-target --target=/target -- apt-get install -y /tmp/chrome.deb
+    - curtin in-target --target=/target -- rm /tmp/chrome.deb
+
+    # Installa Intune Portal
+    - curtin in-target --target=/target -- wget -O /tmp/intune-portal.deb https://packages.microsoft.com/ubuntu/20.04/prod/pool/main/m/microsoft-intune-portal/microsoft-intune-portal_1.0.0.0_amd64.deb
+    - curtin in-target --target=/target -- apt-get install -y /tmp/intune-portal.deb
+    - curtin in-target --target=/target -- rm /tmp/intune-portal.deb
+
+    # Configura l'accesso automatico a Intune Portal
+    - curtin in-target --target=/target -- sh -c 'echo "#!/bin/bash\nm365 login --authType password --userName LeeG@M365x27697555.OnMicrosoft.com --password Luu2134\nm365 intune sync" > /etc/profile.d/intune-login.sh'
+    - curtin in-target --target=/target -- chmod +x /etc/profile.d/intune-login.sh
+
+    # Rimuovi pacchetti non necessari
+    - curtin in-target --target=/target -- apt-get purge -y libreoffice-common
+    - curtin in-target --target=/target -- apt-get purge -y libreoffice*
+    - curtin in-target --target=/target -- apt-get purge -y remmina*
+    - curtin in-target --target=/target -- apt-get purge -y transmission*
+
+    # Pulizia del sistema
+    - curtin in-target --target=/target -- apt-get autoremove -y
+    - curtin in-target --target=/target -- apt-get clean
+
+    # Riavvio del sistema
+    - curtin in-target --target=/target -- reboot
