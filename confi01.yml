@@ -1,0 +1,64 @@
+#cloud-config
+autoinstall:
+  version: 1
+  user-data:
+    users: [""]  # Aggiungi qui gli utenti se necessario
+    disable_root: false  # Abilita l'accesso root
+  ssh:
+    install-server: no  # Disabilita l'installazione del server SSH
+  storage:
+    layout:
+      name: lvm
+      password: ubuntu  # Cambia questa password con una più sicura
+  keyboard:
+    layout: de  # Layout della tastiera tedesco
+  locale: en_US  # Imposta la lingua su inglese americano
+  packages:
+    - curl
+    - wget
+    - gnupg  # Aggiunto per gestire le chiavi GPG
+  snaps:
+    - name: code  # Visual Studio Code
+    - name: postman  # Postman
+    - name: powershell  # PowerShell
+    - name: pycharm-community  # PyCharm Community Edition
+  late-commands:
+    # Aggiornamento dei pacchetti
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get upgrade -y
+
+    # Installazione di Microsoft Intune Portal
+    - curtin in-target --target=/target -- mkdir -p /tmp/microsoft
+    - curtin in-target --target=/target -- sh -c 'cd /tmp/microsoft && curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg'
+    - curtin in-target --target=/target -- install -o root -g root -m 644 /tmp/microsoft/microsoft.gpg /usr/share/keyrings/microsoft.gpg
+    - curtin in-target --target=/target -- sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/24.04/prod noble main" > /etc/apt/sources.list.d/microsoft-ubuntu-noble-prod.list'
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get install -y intune-portal
+
+    # Installazione di Microsoft Defender for Endpoint (MDE)
+    - curtin in-target --target=/target -- wget -O /tmp/microsoft/mde_installer.sh https://raw.githubusercontent.com/microsoft/mdatp-xplat/refs/heads/master/linux/installation/mde_installer.sh
+    - curtin in-target --target=/target -- chmod +x /tmp/microsoft/mde_installer.sh
+    - curtin in-target --target=/target -- /tmp/microsoft/mde_installer.sh --install --channel prod -y
+
+    # Avvio e abilitazione del servizio MDE
+    - curtin in-target --target=/target -- systemctl daemon-reload
+    - curtin in-target --target=/target -- systemctl enable mdatp
+    - curtin in-target --target=/target -- systemctl start mdatp
+
+    # Installazione di Microsoft Edge
+    - curtin in-target --target=/target -- sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list'
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get install -y microsoft-edge-stable
+
+    # Rimozione di software non necessario
+    - curtin in-target --target=/target -- apt-get purge -y libreoffice-*  # Rimuove tutti i pacchetti di LibreOffice
+    - curtin in-target --target=/target -- apt-get purge -y remmina*  # Rimuove Remmina
+    - curtin in-target --target=/target -- apt-get purge -y transmission*  # Rimuove Transmission
+
+    # Pulizia del sistema
+    - curtin in-target --target=/target -- apt-get autoremove -y  # Rimuove i pacchetti non più necessari
+    - curtin in-target --target=/target -- apt-get clean  # Pulisce la cache dei pacchetti
+    - curtin in-target --target=/target -- rm -rf /tmp/microsoft  # Rimuove la cartella temporanea
+
+    # Riavvio del sistema
+    - curtin in-target --target=/target -- reboot
