@@ -2,14 +2,21 @@
 autoinstall:
   version: 1
   user-data:
-    users: [""]  # Aggiungi qui gli utenti se necessario
+    users:
+      - name: admin  # Nome utente
+        password: "Prova123"  # Password per l'utente admin
+        shell: /bin/bash
+        groups: [adm, sudo]  # Aggiungi l'utente ai gruppi adm e sudo
+        lock-passwd: false  # Non bloccare la password
+        sudo: ALL=(ALL) NOPASSWD:ALL  # Permessi sudo senza richiedere password
     disable_root: false  # Abilita l'accesso root
   ssh:
     install-server: no  # Disabilita l'installazione del server SSH
   storage:
     layout:
       name: lvm
-      password: ubuntu  # Cambia questa password con una più sicura
+      password: Prova123  # Password per la crittografia LVM (simile a BitLocker)
+      encrypt: true  # Abilita la crittografia del disco
   keyboard:
     layout: de  # Layout della tastiera tedesco
   locale: en_US  # Imposta la lingua su inglese americano
