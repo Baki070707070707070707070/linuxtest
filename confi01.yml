@@ -13,8 +13,19 @@ autoinstall:
     install-server: no
   storage:
     layout:
-      name: lvm
-      password: ubuntu # Change this to your desired password
+      name: gpt
+      wipe: true
+      partitions:
+        - number: 1
+          size: 1024M
+          flag: boot
+          type: fat32
+          label: boot
+        - number: 2
+          size: -1
+          type: ext4
+          label: root
+          mount: /
   keyboard:
     layout: de
   locale: en_US
@@ -65,6 +76,5 @@ autoinstall:
     - curtin in-target --target=/target -- rm /tmp/microsoft/microsoft.gpg
     - curtin in-target --target=/target -- rm /tmp/microsoft/mde_installer.sh
     - curtin in-target --target=/target -- rm -rf /tmp/microsoft
-
     # Reboot
     - curtin in-target --target=/target -- reboot
