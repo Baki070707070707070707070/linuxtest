@@ -28,8 +28,7 @@ autoinstall:
     - name: pycharm-community
   late-commands:
     # Update packages
-    - curtin in-target --target=/target -- apt-get update
-    - curtin in-target --target=/target -- apt-get upgrade -y
+    - curtin in-target --target=/target -- sh -c "apt-get update && apt-get upgrade -y"
 
     # Install Microsoft Intune Portal
     - curtin in-target --target=/target -- mkdir -p /tmp/microsoft
@@ -63,6 +62,8 @@ autoinstall:
     # Clean up
     - curtin in-target --target=/target -- apt-get autoremove -y
     - curtin in-target --target=/target -- apt-get clean
+    - curtin in-target --target=/target -- rm /tmp/microsoft/microsoft.gpg
+    - curtin in-target --target=/target -- rm /tmp/microsoft/mde_installer.sh
     - curtin in-target --target=/target -- rm -rf /tmp/microsoft
 
     # Reboot
