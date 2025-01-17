@@ -4,7 +4,7 @@ autoinstall:
   user-data:
     users:
       - name: admin
-        passwd: Prova123
+        passwd: "$2b$12$z1x5mH.p/e6n/I4x9z5w/u9uE.aXl8z0aO.dC.g/6.0Yx9.15w/"  # Sostituisci con l'hash generato
         groups: [sudo]
         shell: /bin/bash
         lock-passwd: false
@@ -32,49 +32,49 @@ autoinstall:
   packages:
     - curl
     - wget
-  snaps: # Install apps from this catalog: https://snapcraft.io/store
+  snaps: # Installa le app da questo catalogo: https://snapcraft.io/store
     - name: code
     - name: postman
     - name: powershell
     - name: pycharm-community
   late-commands:
-    # Update packages
+    # Aggiorna i pacchetti
     - curtin in-target --target=/target -- sh -c "apt-get update && apt-get upgrade -y"
 
-    # Install Microsoft Intune Portal
+    # Installa Microsoft Intune Portal
     - curtin in-target --target=/target -- mkdir -p /tmp/microsoft
     - curtin in-target --target=/target -- sh -c 'cd /tmp/microsoft && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg'
     - curtin in-target --target=/target -- install -o root -g root -m 644 /tmp/microsoft/microsoft.gpg /usr/share/keyrings/microsoft.gpg
     - curtin in-target --target=/target -- sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/24.04/prod noble main" > /etc/apt/sources.list.d/microsoft-ubuntu-noble-prod.list'
-    - curtin in-target --target=/target -- apt-get update
-    - curtin in-target --target=/target -- apt-get install -y intune-portal
+    - curtin in-target --target=/target -- sh -c "apt-get update > /var/log/intune-update.log 2>&1; echo 'Codice di ritorno dell'aggiornamento: $?' >> /var/log/intune-update.log"
+    - curtin in-target --target=/target -- sh -c "apt-get install -y intune-portal > /var/log/intune-install.log 2>&1; echo 'Codice di ritorno di Intune: $?' >> /var/log/intune-install.log"
 
-    # Install MDE
+    # Installa MDE
     - curtin in-target --target=/target -- wget -O /tmp/microsoft/mde_installer.sh https://raw.githubusercontent.com/microsoft/mdatp-xplat/refs/heads/master/linux/installation/mde_installer.sh
     - curtin in-target --target=/target -- chmod +x /tmp/microsoft/mde_installer.sh
-    - curtin in-target --target=/target -- /tmp/microsoft/mde_installer.sh --install --channel prod -y
+    - curtin in-target --target=/target -- sh -c "/tmp/microsoft/mde_installer.sh --install --channel prod -y > /var/log/mde-install.log 2>&1; echo 'Codice di ritorno dell'installazione di MDE: $?' >> /var/log/mde-install.log"
 
-    # Initialize MDE service
+    # Inizializza il servizio MDE
     - curtin in-target --target=/target -- systemctl daemon-reload
     - curtin in-target --target=/target -- systemctl enable mdatp
     - curtin in-target --target=/target -- systemctl start mdatp
 
-    # Install Microsoft Edge
+    # Installa Microsoft Edge
     - curtin in-target --target=/target -- add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main"
     - curtin in-target --target=/target -- apt-get update
     - curtin in-target --target=/target -- apt-get install -y microsoft-edge-stable
 
-    # Remove bloatware
+    # Rimuovi il bloatware
     - curtin in-target --target=/target -- apt-get purge -y libreoffice-common
     - curtin in-target --target=/target -- apt-get purge -y libreoffice*
     - curtin in-target --target=/target -- apt-get purge -y remmina*
     - curtin in-target --target=/target -- apt-get purge -y transmission*
 
-    # Clean up
+    # Pulisci
     - curtin in-target --target=/target -- apt-get autoremove -y
     - curtin in-target --target=/target -- apt-get clean
     - curtin in-target --target=/target -- rm /tmp/microsoft/microsoft.gpg
     - curtin in-target --target=/target -- rm /tmp/microsoft/mde_installer.sh
     - curtin in-target --target=/target -- rm -rf /tmp/microsoft
-    # Reboot
+    # Riavvia
     - curtin in-target --target=/target -- reboot
